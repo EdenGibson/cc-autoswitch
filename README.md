@@ -1,11 +1,17 @@
 # cc-autoswitch
 
+[![CI](https://github.com/EdenGibson/cc-autoswitch/actions/workflows/ci.yml/badge.svg)](https://github.com/EdenGibson/cc-autoswitch/actions/workflows/ci.yml)
+
 Quota-aware automatic account switching for [Claude Code](https://claude.com/claude-code),
 built on top of [`cswap` (claude-swap)](https://pypi.org/project/claude-swap/).
 
 When the active Claude account is about to exhaust its 5-hour usage window,
 `cc-autoswitch` rotates to the managed account with the **most headroom** — so
 long-running agents keep going instead of stalling on a rate limit.
+
+> ⚠️ **Account-policy risk.** Auto-rotating accounts to extend usage may run
+> afoul of Anthropic's terms (limit evasion). Read
+> **[docs/POLICY.md](docs/POLICY.md)** before using this. Use at your own risk.
 
 ## Why not just `cswap --switch`?
 
@@ -23,7 +29,7 @@ causes two real failure modes:
 
 ## How it works
 
-A cron job runs once a minute. Each run:
+A scheduler (cron or a systemd user timer) runs it once a minute. Each run:
 
 1. **Forces a live, all-account usage refresh** — drops `cswap`'s 15-second
    usage cache and runs `cswap --list`, so the decision never rides a stale or
@@ -44,63 +50,91 @@ A cron job runs once a minute. Each run:
 
 ## Install
 
-Requires Python 3 and `cswap` with **2+ managed accounts**.
+Linux only. Requires Python 3.11+ and [`cswap`](https://pypi.org/project/claude-swap/)
+with **2+ managed accounts**.
 
 ```bash
-git clone <this-repo> ~/code/cc-autoswitch
+git clone https://github.com/EdenGibson/cc-autoswitch ~/code/cc-autoswitch
 cd ~/code/cc-autoswitch
-./install.sh        # adds the per-minute cron entry (idempotent)
+
+./install.sh              # per-minute cron job (default)
+# or:
+./install.sh --systemd   # per-minute systemd --user timer instead
+./install.sh --uninstall # remove whichever backend is installed
 ```
 
-Check what it would do right now, without switching:
+Optionally put the CLI on your `PATH`:
 
 ```bash
-./cc-autoswitch.sh --dry-run
-# active=1 [1=12%, 2=64%] -> NOOP: active acct 1 at 12% < 97%
+pipx install .           # or: pip install --user .
 ```
+
+## Usage
+
+```bash
+cc-autoswitch            # make a switch decision (what the scheduler runs)
+cc-autoswitch --dry-run  # print the decision; switch nothing, write no state
+cc-autoswitch status     # read-only snapshot: config, per-account 5h%, decision
+cc-autoswitch doctor     # environment health check (PASS/WARN/FAIL, non-zero on fail)
+cc-autoswitch init       # create ~/.config/cc-autoswitch/config.toml
+```
+
+From a clone without installing, use `./cc-autoswitch.sh <args>` or
+`python3 cc_autoswitch.py <args>`.
 
 ## Configuration
 
-Tunables live at the top of [`cc_autoswitch.py`](cc_autoswitch.py):
+Settings resolve with precedence **environment variable › config file › built-in
+default**. The config file is TOML at `$CC_AUTOSWITCH_CONFIG` (default
+`~/.config/cc-autoswitch/config.toml`); run `cc-autoswitch init` to create it
+from [`cc-autoswitch.toml.example`](cc-autoswitch.toml.example).
 
-| Constant | Default | Meaning |
-|---|---|---|
-| `SWITCH_AT` | `97.0` | Leave the active account at/above this 5h % |
-| `MIN_IMPROVEMENT` | `10.0` | Only switch if the target is this many points better |
-| `COOLDOWN` | `300` | Minimum seconds between switches |
-| `UNAVAIL_GRACE` | `3` | Consecutive "unavailable" runs (~minutes) before treating the active account as maxed |
+| Config key | Env var | Default | Meaning |
+|---|---|---|---|
+| `switch_at` | `CC_AUTOSWITCH_SWITCH_AT` | `97` | Leave the active account at/above this 5h % |
+| `min_improvement` | `CC_AUTOSWITCH_MIN_IMPROVEMENT` | `10` | Only switch if the target is this many points better |
+| `cooldown` | `CC_AUTOSWITCH_COOLDOWN` | `300` | Minimum seconds between switches |
+| `unavail_grace` | `CC_AUTOSWITCH_UNAVAIL_GRACE` | `3` | Consecutive "unavailable" runs (~min) before treating active as maxed |
+| `state_dir` | `CC_AUTOSWITCH_STATE_DIR` | `~/.claude` | Log + cooldown/debounce state |
+| `cswap` | `CC_AUTOSWITCH_CSWAP` | `cswap` on `PATH` | Path to the `cswap` binary |
+| `usage_json` | `CC_AUTOSWITCH_USAGE_JSON` | `~/.local/share/claude-swap/cache/usage.json` | `cswap` usage cache |
+| `python` | `CC_AUTOSWITCH_PYTHON` | `/usr/bin/python3` | Interpreter used by the cron/systemd shim |
 
-Paths are environment-overridable (defaults preserve the original behaviour —
-state under `~/.claude`, `cswap` resolved from `PATH`):
+Runtime artifacts written to the state dir: `cc-autoswitch.log` (only logs actual
+switches and cooldown skips — no NOOP spam), `.cc-autoswitch.last` (cooldown
+stamp), `.cc-autoswitch.unavail` (debounce streak).
 
-| Env var | Default |
-|---|---|
-| `CC_AUTOSWITCH_STATE_DIR` | `~/.claude` (log + cooldown/debounce state) |
-| `CC_AUTOSWITCH_CSWAP` | `cswap` on `PATH`, else `~/.local/bin/cswap` |
-| `CC_AUTOSWITCH_USAGE_JSON` | `~/.local/share/claude-swap/cache/usage.json` |
-| `CC_AUTOSWITCH_PYTHON` | `/usr/bin/python3` (used by the shim) |
+## Does switching affect running Claude Code sessions?
 
-Runtime artifacts written to the state dir: `cc-autoswitch.log` (only logs
-actual switches and cooldown skips — no NOOP spam), `.cc-autoswitch.last`
-(cooldown stamp), `.cc-autoswitch.unavail` (debounce streak).
+**Yes — seamlessly, with no restart.** `cswap` overwrites the live
+`~/.claude/.credentials.json` that Claude Code reads, so in-flight sessions pick
+up the new account on their next request. (`cswap` prints a conservative
+"Please restart Claude Code" message, but a restart isn't required in practice.)
 
 ## Testing
 
-Pure decision logic is covered by unit tests (no `cswap` calls, no real
-switching):
-
 ```bash
-make test         # or: python3 -m unittest test_cc_autoswitch -v
+make test         # python3 -m unittest discover -p 'test_*.py'   (67 tests)
+make dry-run      # show the current decision
 ```
 
-## Caveats
+CI (GitHub Actions) runs the suite on Python 3.11–3.13 plus `ruff` and `mypy`.
 
-- **Switching can't rescue already-running sessions.** `cswap` itself notes
-  *"Please restart Claude Code to use the new authentication."* In-flight
-  sessions keep their old token until restarted; new/restarted sessions pick up
-  the switched account.
-- Needs at least **two managed accounts**; with one (or with all accounts
-  maxed) it correctly does nothing.
+## Caveats & limits
+
+- Needs **2+ managed accounts**; with one — or when *all* accounts are maxed —
+  it correctly does nothing.
+- Only the **5-hour** window is addressed; weekly caps are not.
+- See **[docs/POLICY.md](docs/POLICY.md)** for the Terms-of-Service / account
+  suspension risk.
+
+## Documentation
+
+- [docs/POLICY.md](docs/POLICY.md) — Terms-of-Service / account-risk (**read first**)
+- [docs/FAQ.md](docs/FAQ.md) — common questions & troubleshooting
+- [docs/threat-model.md](docs/threat-model.md) — security threat model
+- [SECURITY.md](SECURITY.md) — vulnerability reporting
+- [CONTRIBUTING.md](CONTRIBUTING.md) — dev setup & contribution guide
 
 ## License
 

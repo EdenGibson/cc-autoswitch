@@ -1,0 +1,11 @@
+[Unit]
+# cc-autoswitch — quota-aware Claude Code account auto-switcher.
+# Triggered every minute by cc-autoswitch.timer.
+Description=Quota-aware Claude Code account auto-switcher
+
+[Service]
+Type=oneshot
+# install.sh substitutes the ExecStart token below with the absolute path to
+# this repo's cc-autoswitch.sh shim. If you install the unit files by hand,
+# replace the __CC_AUTOSWITCH_SH__ token with that real path.
+ExecStart=__CC_AUTOSWITCH_SH__

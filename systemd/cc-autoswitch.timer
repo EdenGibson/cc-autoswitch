@@ -1,0 +1,13 @@
+[Unit]
+Description=Run cc-autoswitch every minute
+
+[Timer]
+# Fire at the top of every minute.
+OnCalendar=*:0/1
+# Catch up on a missed run after the machine was asleep/off.
+Persistent=true
+# Keep the trigger tight to the calendar boundary.
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

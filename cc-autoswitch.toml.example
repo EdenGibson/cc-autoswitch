@@ -1,0 +1,64 @@
+# cc-autoswitch configuration (example)
+#
+# Copy this to the active config location and uncomment what you want to change:
+#
+#   cc-autoswitch init            # creates ~/.config/cc-autoswitch/config.toml
+#   $EDITOR ~/.config/cc-autoswitch/config.toml
+#
+# The active config path is $CC_AUTOSWITCH_CONFIG if set, otherwise
+# ~/.config/cc-autoswitch/config.toml. If the file is absent, the built-in
+# defaults below are used — the tool never requires a config file.
+#
+# PRECEDENCE (lowest to highest):
+#   built-in default  <  this config file  <  environment variable
+#
+# Every key here has a matching CC_AUTOSWITCH_* environment variable that, when
+# set and non-empty, wins over the file value. Each key is shown below with its
+# built-in default value (commented out — uncomment to override).
+
+# ── Tunables ─────────────────────────────────────────────────────────
+
+# Leave the active account once its 5-hour utilisation reaches/exceeds this %.
+# Env override: CC_AUTOSWITCH_SWITCH_AT
+# switch_at = 97.0
+
+# Only switch if the chosen target is at least this many percentage points
+# better than the active account (anti-thrash margin). Ignored when the active
+# account's usage is unavailable (there's no number to compare against).
+# Env override: CC_AUTOSWITCH_MIN_IMPROVEMENT
+# min_improvement = 10.0
+
+# Minimum seconds between switches, to avoid ping-ponging between accounts.
+# Env override: CC_AUTOSWITCH_COOLDOWN
+# cooldown = 300
+
+# Consecutive "unavailable" runs (~one per minute) before the active account's
+# missing usage is treated as "maxed" and triggers a failover. The active-usage
+# endpoint returns null intermittently even for healthy accounts (notably right
+# at a 5-hour reset boundary), so we debounce instead of fleeing on the first
+# null reading.
+# Env override: CC_AUTOSWITCH_UNAVAIL_GRACE
+# unavail_grace = 3
+
+# ── Paths ────────────────────────────────────────────────────────────
+
+# Directory for runtime state: the log, the cooldown stamp, and the
+# unavailable-streak debounce file. Default: ~/.claude
+# Env override: CC_AUTOSWITCH_STATE_DIR
+# state_dir = "~/.claude"   # note: TOML has no ~ expansion — use an absolute path
+
+# Path to the cswap (claude-swap) executable. Default: cswap resolved from PATH,
+# falling back to ~/.local/bin/cswap.
+# Env override: CC_AUTOSWITCH_CSWAP
+# cswap = "/home/you/.local/bin/cswap"
+
+# Path to cswap's usage cache. Default:
+#   ~/.local/share/claude-swap/cache/usage.json
+# Env override: CC_AUTOSWITCH_USAGE_JSON
+# usage_json = "/home/you/.local/share/claude-swap/cache/usage.json"
+
+# Python interpreter used by the cron shell shim (cc-autoswitch.sh) to run
+# cc_autoswitch.py. This key is consumed by the SHIM, not by the Python module
+# itself. Default: /usr/bin/python3
+# Env override: CC_AUTOSWITCH_PYTHON
+# python = "/usr/bin/python3"

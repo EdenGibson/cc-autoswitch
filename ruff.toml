@@ -1,0 +1,28 @@
+# Ruff configuration for cc-autoswitch.
+# Deliberately lenient: a stdlib-only Python CLI (argparse, subprocess,
+# `from __future__ import annotations`) should pass without source rewrites.
+
+line-length = 100
+target-version = "py311"
+
+[lint]
+# Sensible core set: pyflakes (F), a subset of pycodestyle (E), import
+# sorting (I), pyupgrade (UP), and flake8-bugbear (B).
+select = ["E", "F", "I", "UP", "B"]
+
+# Generous ignores so ordinary CLI idioms don't trip the linter.
+ignore = [
+    "E501",   # line too long (line-length is advisory, not enforced as an error)
+    "E741",   # ambiguous variable name (e.g. `l`)
+    "B008",   # function call in argument defaults (common with argparse helpers)
+    "B905",   # zip() without explicit strict= (3.10+ only, noisy)
+    "UP015",  # redundant open() mode argument
+]
+
+[lint.per-file-ignores]
+# Tests favour readability over lint purity.
+"test_*.py" = ["E", "F", "B", "UP"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
