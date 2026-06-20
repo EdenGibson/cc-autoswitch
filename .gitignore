@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Runtime artifacts (in case the tool is run from within the repo)
+*.log
+.cc-autoswitch.last
+.cc-autoswitch.unavail
