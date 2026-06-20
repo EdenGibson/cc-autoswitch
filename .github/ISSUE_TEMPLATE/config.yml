@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & troubleshooting
+    url: https://github.com/EdenGibson/cc-autoswitch/blob/main/docs/FAQ.md
+    about: Check the FAQ first — it covers setup, cron vs systemd, and common "not switching" cases.
+  - name: Account-policy / Terms-of-Service risk
+    url: https://github.com/EdenGibson/cc-autoswitch/blob/main/docs/POLICY.md
+    about: Read this before using — auto-rotating accounts may violate Anthropic's terms.
+  - name: Report a security vulnerability
+    url: https://github.com/EdenGibson/cc-autoswitch/security/advisories/new
+    about: Please report security issues privately, not as a public issue.

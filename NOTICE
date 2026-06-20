@@ -1,0 +1,23 @@
+cc-autoswitch
+Copyright (c) 2026 Eden Gibson
+Licensed under the MIT License (see LICENSE).
+
+------------------------------------------------------------------------
+Trademark / affiliation disclaimer
+------------------------------------------------------------------------
+
+"Claude" and "Anthropic" are trademarks of Anthropic, PBC. "Claude Code" is
+a product of Anthropic.
+
+cc-autoswitch is an independent, UNOFFICIAL community tool. It is not
+affiliated with, endorsed by, sponsored by, or supported by Anthropic in any
+way. Any references to Claude, Claude Code, or Anthropic are nominative only,
+to describe interoperability.
+
+cc-autoswitch builds on "cswap" / "claude-swap"
+(https://pypi.org/project/claude-swap/), a separate third-party project with
+its own authors and license; it is a runtime dependency, not part of this
+project.
+
+Use of this tool may be subject to Anthropic's Consumer Terms and Usage
+Policy. See docs/POLICY.md. Use at your own risk.
